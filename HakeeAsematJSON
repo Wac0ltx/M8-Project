@@ -10,13 +10,13 @@ export default class Movies extends Component {
   }
 
   componentDidMount() {
-    return fetch('https://rata.digitraffic.fi/api/v1/trains/2017-01-01/1')
+    return fetch('https://rata.digitraffic.fi/api/v1/live-trains/station/HKI/PSL?limit=15')
       .then((response) => response.json())
       .then((responseJson) => {
         let ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
         this.setState({
           isLoading: false,
-          dataSource: ds.cloneWithRows(responseJson[0].timeTableRows),
+          dataSource: ds.cloneWithRows(responseJson),
         }, function() {
           // do something with new state
         });
@@ -34,12 +34,13 @@ export default class Movies extends Component {
         </View>
       );
     }
+//rajaus siten että type=departure ja stationshortcode=hki
 
     return (
       <View style={{flex: 1, paddingTop: 20}}>
         <ListView
           dataSource={this.state.dataSource}
-          renderRow={(rowData) => <Text>{rowData.stationShortCode}</Text>}
+          renderRow={(rowData) => <Text>{rowData.commuterLineID} {rowData.trainCategory}</Text>}
         />
       </View>
     );
