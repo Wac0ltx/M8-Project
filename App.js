@@ -1,24 +1,44 @@
 import React, { Component } from 'react';
-import { StyleSheet, AppRegistry, Text, TextInput, View } from 'react-native';
-
-class Trains extends Component {
- render() {
-    return (
-      <Text>Juna: {this.props.train} Saapuu: {this.props.arrive} Lähtee: {this.props.depart}</Text>
-    );
-  }
-}
+import { StyleSheet, AppRegistry, Text, TextInput, View, ActivityIndicator, ListView } from 'react-native';
 
 export default class textfield extends Component {
   constructor(props) {
     super(props);
-    this.state = {text: ''};
+    this.state = {
+        isLoading: true,
+        text: ''};
   }
-
+    
+    componentDidMount() {
+    return fetch('https://rata.digitraffic.fi/api/v1/live-trains/station/HKI/PSL?limit=15')
+      .then((response) => response.json())
+      .then((responseJson) => {
+        let ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
+        this.setState({
+          isLoading: false,
+          dataSource: ds.cloneWithRows(responseJson), 
+        }, function() {
+          // do something with new state
+        });
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+  }
+    
   render() {
+          if (this.state.isLoading) {
+      return (
+        <View style={{flex: 1, paddingTop: 20}}>
+          <ActivityIndicator />
+        </View>
+      );
+    }
+
     return (
-      <View style={styles.container}>
-        <View>
+          <View style={{flex: 1, paddingTop: 20}}>
+            <View style={styles.container}>
+            <View>
             <TextInput ref={'lahtopaikka'} style={styles.textinput}
               placeholder="Lähtöpaikka"
             />
@@ -26,17 +46,17 @@ export default class textfield extends Component {
            <TextInput ref={'paateasema'} style={styles.textinput}
               placeholder="Pääteasema/Junan numero"
             />
-        </View>
-        <Text style={styles.text}>Lähtöpaikan junan aikataulut:</Text>
-        <View style={styles.container2}>
-            <Text>Tähän lista junista</Text>
-            <View style={{flex:1}}>
-                <Trains train='1'/>
-                <Trains arrive='15:00'/>
-                <Trains depart='15:01'/>
             </View>
+            <ListView
+            dataSource={this.state.dataSource}
+            renderRow={(rowData) =>
+                <Text numberOfLines={1}>Juna: {rowData.commuterLineID}  
+                Saapuu: {rowData.timeTableRows[0].scheduledTime}
+                </Text>
+            }
+            />
+          </View>
         </View>
-      </View>
     );
   }
 }
@@ -63,4 +83,10 @@ const styles = StyleSheet.create({
     text: {
         padding: 10,
     },
+      head: { height: 40, backgroundColor: '#f1f8ff' },
+      text2: { marginLeft: 5 },
+      row: { height: 30 }
 });
+
+// skip this line if using Create React Native App
+//AppRegistry.registerComponent('AwesomeProject', () => UselessTextInput);
