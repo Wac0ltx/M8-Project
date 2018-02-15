@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import { StyleSheet, AppRegistry, Text, TextInput, View, ActivityIndicator, ListView } from 'react-native';
+import moment from 'moment';
 
 export default class textfield extends Component {
   constructor(props) {
@@ -8,9 +9,23 @@ export default class textfield extends Component {
         isLoading: true,
         text: ''};
   }
+
+  
+ /* place(){
+    if (lahtopaikka.toUpperCase = "PASILA") {
+      lahto = "PSL";
+      saapumis = "PSL";
+      var url = lahto + "/" + saapumis + "?limit=15'";
+      "PASILA" = "PSL";
+    }
+    if (lahtopaikka.toUpperCase = "HELSINKI"){
+      var url = "HKI/HKI?limit=15";
+      "HELSINKI" = "HKI"
+    }
+  }*/
     
     componentDidMount() {
-    return fetch('https://rata.digitraffic.fi/api/v1/live-trains/station/HKI/PSL?limit=15')
+    return fetch('https://rata.digitraffic.fi/api/v1/live-trains/station/PSL/HKI?limit=15')
       .then((response) => response.json())
       .then((responseJson) => {
         let ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
@@ -25,7 +40,19 @@ export default class textfield extends Component {
         console.error(error);
       });
   }
-    
+
+  formatDate(date){
+    return moment(date).format("hh:mm")
+  }
+
+  trains(){
+    dataSource=this.state.dataSource;
+    renderRow=(rowData) => {
+      const hello = "hello";
+      return hello;
+      if (rowData.commuterLineID.length){}
+  }
+}
   render() {
           if (this.state.isLoading) {
       return (
@@ -33,7 +60,7 @@ export default class textfield extends Component {
           <ActivityIndicator />
         </View>
       );
-    }
+    }  
 
     return (
           <View style={{flex: 1, paddingTop: 20}}>
@@ -50,8 +77,11 @@ export default class textfield extends Component {
             <ListView
             dataSource={this.state.dataSource}
             renderRow={(rowData) =>
-                <Text numberOfLines={1}>Juna: {rowData.commuterLineID}  
-                Saapuu: {rowData.timeTableRows[0].scheduledTime}
+
+                <Text numberOfLines={1}>Juna: {rowData.commuterLineID}&emsp;
+                Saapuu: {this.formatDate(rowData.timeTableRows[1].scheduledTime)}&emsp;
+                {rowData.timeTableRows[rowData.timeTableRows.length-1].stationShortCode}:&nbsp;
+                {this.formatDate(rowData.timeTableRows[rowData.timeTableRows.length-1].scheduledTime)}
                 </Text>
             }
             />
