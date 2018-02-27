@@ -9,21 +9,14 @@ export default class textfield extends Component {
         isLoading: true,
         text: ''};
   }
-
-  
- /* place(){
-    if (lahtopaikka.toUpperCase = "PASILA") {
-      lahto = "PSL";
-      saapumis = "PSL";
-      var url = lahto + "/" + saapumis + "?limit=15'";
-      "PASILA" = "PSL";
-    }
-    if (lahtopaikka.toUpperCase = "HELSINKI"){
-      var url = "HKI/HKI?limit=15";
-      "HELSINKI" = "HKI"
-    }
-  }*/
-    
+ /*Pitää hakea state.lahtopaikka textinputista ja tallentaa variableen esim:
+  var lahto = state.lahtopaikka
+  if (lahto.toUpperCase == "PASILA"){
+    lahto = "PSL/HKI"
+  }
+ ja sitten vaihtaa url:
+  'https://rata.digitraffic.fi/api/v1/live-trains/station/' + lahto + '?limit=15'
+ */
     componentDidMount() {
     return fetch('https://rata.digitraffic.fi/api/v1/live-trains/station/PSL/HKI?limit=15')
       .then((response) => response.json())
@@ -66,14 +59,18 @@ export default class textfield extends Component {
           <View style={{flex: 1, paddingTop: 20}}>
             <View style={styles.container}>
             <View>
-            <TextInput ref={'lahtopaikka'} style={styles.textinput}
-              placeholder="Lähtöpaikka"
-            />
-            <Text style={styles.text}></Text>
-           <TextInput ref={'paateasema'} style={styles.textinput}
-              placeholder="Pääteasema/Junan numero"
-            />
+              <TextInput
+                style={styles.textinput}
+                placeholder="Lähtöpaikka"
+                onChangeText={(text) => this.setState({lahtopaikka: text})}
+              />
+              <TextInput
+                style={styles.textinput}
+                placeholder="Pääteasema"
+                onChangeText={(text) => this.setState({paateasema: text})}
+              />
             </View>
+            
             <ListView
             dataSource={this.state.dataSource}
             renderRow={(rowData) =>
