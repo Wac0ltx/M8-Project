@@ -7,24 +7,29 @@ export default class textfield extends Component {
     super(props);
     this.state = {
         isLoading: true,
-        text: ''};
+        text: '',
+        lahtopaikka: 'HKI',
+        saapumispaikka: '',
+        i: 0,
+        hello: '',
+        json: ''};
   }
- /*Pitää hakea state.lahtopaikka textinputista ja tallentaa variableen esim:
-  var lahto = state.lahtopaikka
-  if (lahto.toUpperCase == "PASILA"){
-    lahto = "PSL/HKI"
-  }
- ja sitten vaihtaa url:
-  'https://rata.digitraffic.fi/api/v1/live-trains/station/' + lahto + '?limit=15'
- */
+
     componentDidMount() {
-    return fetch('https://rata.digitraffic.fi/api/v1/live-trains/station/PSL/HKI?limit=15')
+      let lahto =  this.state.lahtopaikka;
+      if (this.state.lahtopaikka.toUpperCase() == "PASILA"){
+        lahto = "PSL"
+      }else {
+        lahto = "HKI"
+      };
+    return fetch('https://rata.digitraffic.fi/api/v1/live-trains/station/' + lahto)
       .then((response) => response.json())
       .then((responseJson) => {
         let ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
         this.setState({
           isLoading: false,
-          dataSource: ds.cloneWithRows(responseJson), 
+          dataSource: ds.cloneWithRows(responseJson),
+          json: responseJson
         }, function() {
           // do something with new state
         });
@@ -35,17 +40,17 @@ export default class textfield extends Component {
   }
 
   formatDate(date){
-    return moment(date).format("hh:mm")
+    return moment.utc(date).format("hh:mm")
   }
 
-  trains(){
-    dataSource=this.state.dataSource;
-    renderRow=(rowData) => {
-      const hello = "hello";
-      return hello;
-      if (rowData.commuterLineID.length){}
-  }
+lahtoChanged = (lahto) => {
+  console.log(lahto)
+  this.setState({lahtopaikka: lahto}, () => this.componentDidMount() );
 }
+
+trains(){
+}
+
   render() {
           if (this.state.isLoading) {
       return (
@@ -57,12 +62,13 @@ export default class textfield extends Component {
 
     return (
           <View style={{flex: 1, paddingTop: 20}}>
+          <Text>Test {this.trains()}</Text>
             <View style={styles.container}>
             <View>
               <TextInput
                 style={styles.textinput}
                 placeholder="Lähtöpaikka"
-                onChangeText={(text) => this.setState({lahtopaikka: text})}
+                onChangeText={this.lahtoChanged}
               />
               <TextInput
                 style={styles.textinput}
@@ -70,13 +76,20 @@ export default class textfield extends Component {
                 onChangeText={(text) => this.setState({paateasema: text})}
               />
             </View>
-            
+
             <ListView
             dataSource={this.state.dataSource}
             renderRow={(rowData) =>
 
+             /* if (this.state.lahtopaikka = "PASILA"){
+                this.state.i = 1
+              }
+                if (rowData.commuterLineID != null || rowData.commuterLineID != ''){
+                  rowData.commuterLineID
+                }
+              */
                 <Text numberOfLines={1}>Juna: {rowData.commuterLineID}&emsp;
-                Saapuu: {this.formatDate(rowData.timeTableRows[1].scheduledTime)}&emsp;
+                Lähtee: {this.formatDate(rowData.timeTableRows[0].scheduledTime)}&emsp;
                 {rowData.timeTableRows[rowData.timeTableRows.length-1].stationShortCode}:&nbsp;
                 {this.formatDate(rowData.timeTableRows[rowData.timeTableRows.length-1].scheduledTime)}
                 </Text>
