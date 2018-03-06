@@ -22,7 +22,7 @@ export default class textfield extends Component {
       }else {
         lahto = "HKI"
       };
-    return fetch('https://rata.digitraffic.fi/api/v1/live-trains/station/HKI/KÄP?limit=10')
+    return fetch('https://rata.digitraffic.fi/api/v1/live-trains/station/HKI/TPE')
       .then((response) => response.json())
       .then((responseJson) => {
         let ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
@@ -40,7 +40,7 @@ export default class textfield extends Component {
   }
 
   formatDate(date){
-    return moment.utc(date).format("hh:mm")
+    return moment.utc(date).format("HH:mm")
   }
 
 lahtoChanged = (lahto) => {
