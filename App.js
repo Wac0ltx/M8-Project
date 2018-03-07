@@ -9,29 +9,69 @@ export default class textfield extends Component {
         isLoading: true,
         text: '',
         lahtopaikka: 'HKI',
-        saapumispaikka: '',
-        i: 0,
-        hello: '',
-        json: ''};
+        saapumispaikka: ''};
   }
 
     componentDidMount() {
-      let lahto =  this.state.lahtopaikka;
+        let lahto =  this.state.lahtopaikka;
+        let saapumis = "";
       if (this.state.lahtopaikka.toUpperCase() == "PASILA"){
         lahto = "PSL"
       }else {
         lahto = "HKI"
       };
-    return fetch('https://rata.digitraffic.fi/api/v1/live-trains/station/' + lahto)
+    return fetch('https://rata.digitraffic.fi/api/v1/live-trains/station/' + lahto + saapumis)
       .then((response) => response.json())
       .then((responseJson) => {
+        
+        console.log(responseJson.length)
+        
+        var trainNo = "";
+        var arrivalStation = "";
+        var arrivalTime = "";
+        for (var i = 0; i < responseJson.length; i++){
+            
+            if (responseJson[i].commuterLineID !== ""){
+                trainNo = responseJson[i].commuterLineID
+            }else {
+                trainNo = responseJson[i].trainNumber
+            }
+            responseJson[i].trainID = trainNo
+            
+                for (i2 = 0; i2 < responseJson[i].timeTableRows.length; i2++){
+                    if (responseJson[i].timeTableRows[i2].stationShortCode === lahto
+                       && responseJson[i].timeTableRows[i2].type === "DEPARTURE") {
+                    var departureTime = responseJson[i].timeTableRows[i2].scheduledTime
+                    responseJson[i].departureTime = departureTime
+                   }
+/*                 if (responseJson[i].commuterLineID === "P" ||   responseJson[i].commuterLineID === "I"){
+                        if (responseJson[i].timeTableRows[i2].stationShortCode === "LEN"){
+*/
+                            arrivalStation = responseJson[i].timeTableRows[i2].stationShortCode
+                            responseJson[i].arrivalStation = arrivalStation
+/*                            if (responseJson[i].timeTableRows[i2].type === "ARRIVAL"){
+*/
+                                arrivalTime = responseJson[i].timeTableRows[i2].scheduledTime
+                                responseJson[i].arrivalTime = arrivalTime
+/*                            }
+                        }
+                    }else { 
+*/
+                        arrivalStation = responseJson[i].timeTableRows[responseJson[i].timeTableRows.length-1].stationShortCode
+                        responseJson[i].arrivalStation = arrivalStation
+                        arrivalTime = responseJson[i].timeTableRows[responseJson[i].timeTableRows.length-1].scheduledTime
+                        responseJson[i].arrivalTime = arrivalTime
+//                    }
+                }
+            console.log("Length: " + responseJson[i].commuterLineID.length + " LahtoAika: " + this.formatDate(departureTime) + " PaateAsema: " + arrivalStation + " PaateAika: " + this.formatDate(arrivalTime))
+        }
         let ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
         this.setState({
           isLoading: false,
           dataSource: ds.cloneWithRows(responseJson),
           json: responseJson
         }, function() {
-          // do something with new state
+          
         });
       })
       .catch((error) => {
@@ -40,7 +80,7 @@ export default class textfield extends Component {
   }
 
   formatDate(date){
-    return moment.utc(date).format("hh:mm")
+    return moment.utc(date).format("HH:mm")
   }
 
 lahtoChanged = (lahto) => {
@@ -48,8 +88,6 @@ lahtoChanged = (lahto) => {
   this.setState({lahtopaikka: lahto}, () => this.componentDidMount() );
 }
 
-trains(){
-}
 
   render() {
           if (this.state.isLoading) {
@@ -62,7 +100,6 @@ trains(){
 
     return (
           <View style={{flex: 1, paddingTop: 20}}>
-          <Text>Test {this.trains()}</Text>
             <View style={styles.container}>
             <View>
               <TextInput
@@ -76,24 +113,30 @@ trains(){
                 onChangeText={(text) => this.setState({paateasema: text})}
               />
             </View>
-
+              
+            <View style={{flexDirection: 'row'}}>
+                <Text style={styles.junatext}>Juna</Text>
+                <Text style={styles.junatext1}>Lähtee</Text>
+                <Text style={styles.junatext1}>Pääteasema</Text>
+                <Text style={styles.junatext1}>Saapuu</Text>
+            </View>
             <ListView
             dataSource={this.state.dataSource}
             renderRow={(rowData) =>
-
-             /* if (this.state.lahtopaikka = "PASILA"){
-                this.state.i = 1
-              }
-                if (rowData.commuterLineID != null || rowData.commuterLineID != ''){
-                  rowData.commuterLineID
-                }
-              */
-                <Text numberOfLines={1}>Juna: {rowData.commuterLineID}&emsp;
-                Lähtee: {this.formatDate(rowData.timeTableRows[0].scheduledTime)}&emsp;
-                {rowData.timeTableRows[rowData.timeTableRows.length-1].stationShortCode}:&nbsp;
-                {this.formatDate(rowData.timeTableRows[rowData.timeTableRows.length-1].scheduledTime)}
-                </Text>
+                <View numberOfLines={1} style={{
+                    flex: 1,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                }}>
+                    <Text style={styles.junatext2}>{rowData.trainID}&emsp;</Text>
+                    <Text style={styles.junatext3}>{this.formatDate(rowData.departureTime)}</Text>
+                    <Text style={styles.junatext4}>{rowData.arrivalStation}</Text>
+                    <Text style={styles.junatext5}>{this.formatDate(rowData.arrivalTime)}</Text>
+                
+                        {console.log("PuhNumero: " + rowData.trainID + " PuhLahto: " + this.formatDate(rowData.departureTime) + " PuhSPaikka: " + rowData.arrivalStation + " PuhSAika: " + this.formatDate(rowData.arrivalTime))}
+            </View>
             }
+            renderSeparator={(sectionId, rowId) => <View key={rowId} style={styles.separator}/>}
             />
           </View>
         </View>
@@ -125,7 +168,43 @@ const styles = StyleSheet.create({
     },
       head: { height: 40, backgroundColor: '#f1f8ff' },
       text2: { marginLeft: 5 },
-      row: { height: 30 }
+      row: { height: 30 },
+    junatext:{
+      marginLeft:15,
+      marginBottom:10,
+      marginTop:10,
+      fontSize:18
+    },
+    junatext1:{
+      marginLeft:20,
+      marginTop:10,
+      fontSize:18
+    },
+    junatext2:{
+        marginLeft:25,
+        fontSize:16,
+    },
+    junatext3:{
+      position: 'absolute',
+      left:80,
+      fontSize:16
+    },
+     junatext4:{
+        marginLeft:185,
+        position: 'absolute',
+        fontSize:16
+    },
+    junatext5:{
+        marginLeft:15,
+        position:'absolute',
+        fontSize:16,
+        right:44
+    },
+    separator: {
+        flex: 1,
+        height: StyleSheet.hairlineWidth,
+        backgroundColor: '#8E8E8E',
+    },
 });
 
 // skip this line if using Create React Native App
