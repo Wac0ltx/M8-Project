@@ -8,27 +8,58 @@ export default class textfield extends Component {
     this.state = {
         isLoading: true,
         text: '',
-        lahtopaikka: 'HKI',
-        saapumispaikka: ''};
+        lahtopaikka: 'helsinki',
+        saapumispaikka: '',
+        stationShort: 'HKI',
+        meta: '',
+      };
   }
 
     componentDidMount() {
-        let lahto =  this.state.lahtopaikka;
+        let lahto =  'HKI';
         let saapumis = "";
       if (this.state.lahtopaikka.toUpperCase() == "PASILA"){
         lahto = "PSL"
       }else {
         lahto = "HKI"
       };
-    return fetch('https://rata.digitraffic.fi/api/v1/live-trains/station/' + lahto + saapumis)
+      let stationName = '';
+      let stationShort = 'HKI';
+      fetch('https://rata.digitraffic.fi/api/v1/metadata/stations')
       .then((response) => response.json())
       .then((responseJson) => {
-        
-        console.log(responseJson.length)
+
+        this.setState({meta: responseJson});
+      })
+      console.log("ei fetch:" + this.state.stationShort)
+      console.log("ei fetch:" + this.state.meta[0]);
+    fetch('https://rata.digitraffic.fi/api/v1/live-trains/station/' + this.state.stationShort + saapumis)
+      .then((response) => response.json())
+      .then((responseJson) => {
+        console.log("toka fetch: " + this.state.stationShort)
+        console.log("Live trains määrä:" + responseJson.length)
         
         var trainNo = "";
         var arrivalStation = "";
         var arrivalTime = "";
+        let meta = this.state.meta
+        for (var i3 = 0; i3 < meta.length; i3++){
+          if (meta[i3].stationName.split(' asema')[0].toUpperCase() === this.state.lahtopaikka.toUpperCase() && meta[i3].stationName !== "Helsinki Kivihaka"){
+            this.setState({stationShort: meta[i3].stationShortCode})
+            console.log("jee: " + meta[i3].stationShortCode)
+          }/*else if (responseJson[i3].stationName === "Helsinki Kivihaka"){
+            stationShort = "KHK";
+          }else {
+            stationShort = "ERROR";
+          }*/
+          if (meta[i3].stationShortCode === this.state.stationShort){
+            if (meta[i3].stationName !== "Helsinki Kivihaka"){
+              stationName = meta[i3].stationName.split(' asema')[0]
+            }
+            console.log("meidän pysäkki: " + stationName)
+          }
+        }
+        
         for (var i = 0; i < responseJson.length; i++){
             
             if (responseJson[i].commuterLineID !== ""){
@@ -38,8 +69,8 @@ export default class textfield extends Component {
             }
             responseJson[i].trainID = trainNo
             
-                for (i2 = 0; i2 < responseJson[i].timeTableRows.length; i2++){
-                    if (responseJson[i].timeTableRows[i2].stationShortCode === lahto
+                for (var i2 = 0; i2 < responseJson[i].timeTableRows.length; i2++){
+                    if (responseJson[i].timeTableRows[i2].stationShortCode === stationShort
                        && responseJson[i].timeTableRows[i2].type === "DEPARTURE") {
                     var departureTime = responseJson[i].timeTableRows[i2].scheduledTime
                     responseJson[i].departureTime = departureTime
@@ -63,7 +94,7 @@ export default class textfield extends Component {
                         responseJson[i].arrivalTime = arrivalTime
 //                    }
                 }
-            console.log("Length: " + responseJson[i].commuterLineID.length + " LahtoAika: " + this.formatDate(departureTime) + " PaateAsema: " + arrivalStation + " PaateAika: " + this.formatDate(arrivalTime))
+            // console.log("Length: " + responseJson[i].commuterLineID.length + " LahtoAika: " + this.formatDate(departureTime) + " PaateAsema: " + arrivalStation + " PaateAika: " + this.formatDate(arrivalTime))
         }
         let ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
         this.setState({
@@ -84,7 +115,6 @@ export default class textfield extends Component {
   }
 
 lahtoChanged = (lahto) => {
-  console.log(lahto)
   this.setState({lahtopaikka: lahto}, () => this.componentDidMount() );
 }
 
@@ -132,8 +162,6 @@ lahtoChanged = (lahto) => {
                     <Text style={styles.junatext3}>{this.formatDate(rowData.departureTime)}</Text>
                     <Text style={styles.junatext4}>{rowData.arrivalStation}</Text>
                     <Text style={styles.junatext5}>{this.formatDate(rowData.arrivalTime)}</Text>
-                
-                        {console.log("PuhNumero: " + rowData.trainID + " PuhLahto: " + this.formatDate(rowData.departureTime) + " PuhSPaikka: " + rowData.arrivalStation + " PuhSAika: " + this.formatDate(rowData.arrivalTime))}
             </View>
             }
             renderSeparator={(sectionId, rowId) => <View key={rowId} style={styles.separator}/>}
