@@ -16,82 +16,77 @@ export default class textfield extends Component {
   }
 
     componentDidMount() {
-        let lahto =  'HKI';
-        let saapumis = "";
-      if (this.state.lahtopaikka.toUpperCase() == "PASILA"){
-        lahto = "PSL"
-      }else {
-        lahto = "HKI"
-      };
       let stationName = '';
       let stationShort = 'HKI';
+      let meta = this.state.meta;
+      let trainNo = "";
+      let arrivalStation = "";
+      let arrivalTime = "";
+
       fetch('https://rata.digitraffic.fi/api/v1/metadata/stations')
       .then((response) => response.json())
       .then((responseJson) => {
-
         this.setState({meta: responseJson});
-      })
-      console.log("ei fetch:" + this.state.stationShort)
-      console.log("ei fetch:" + this.state.meta[0]);
-    fetch('https://rata.digitraffic.fi/api/v1/live-trains/station/' + this.state.stationShort + saapumis)
-      .then((response) => response.json())
-      .then((responseJson) => {
-        console.log("toka fetch: " + this.state.stationShort)
-        console.log("Live trains määrä:" + responseJson.length)
-        
-        var trainNo = "";
-        var arrivalStation = "";
-        var arrivalTime = "";
-        let meta = this.state.meta
+
         for (var i3 = 0; i3 < meta.length; i3++){
           if (meta[i3].stationName.split(' asema')[0].toUpperCase() === this.state.lahtopaikka.toUpperCase() && meta[i3].stationName !== "Helsinki Kivihaka"){
             this.setState({stationShort: meta[i3].stationShortCode})
-            console.log("jee: " + meta[i3].stationShortCode)
-          }/*else if (responseJson[i3].stationName === "Helsinki Kivihaka"){
+          }else if (meta[i3].stationName.toUpperCase() === this.state.lahtopaikka.toUpperCase()){
+            this.setState({stationShort: meta[i3].stationShortCode})
+          }else if (responseJson[i3].stationName === "Helsinki Kivihaka"){
             stationShort = "KHK";
           }else {
             stationShort = "ERROR";
-          }*/
+          }
           if (meta[i3].stationShortCode === this.state.stationShort){
             if (meta[i3].stationName !== "Helsinki Kivihaka"){
               stationName = meta[i3].stationName.split(' asema')[0]
             }
-            console.log("meidän pysäkki: " + stationName)
           }
         }
-        
-        for (var i = 0; i < responseJson.length; i++){
+
+    fetch('https://rata.digitraffic.fi/api/v1/live-trains/station/' + this.state.stationShort)
+      .then((response2) => response2.json())
+      .then((responseJson2) => {
+        for (var i = 0; i < responseJson2.length; i++){
             
-            if (responseJson[i].commuterLineID !== ""){
-                trainNo = responseJson[i].commuterLineID
+            if (responseJson2[i].commuterLineID !== ""){
+                trainNo = responseJson2[i].commuterLineID
             }else {
-                trainNo = responseJson[i].trainNumber
+                trainNo = responseJson2[i].trainNumber
             }
-            responseJson[i].trainID = trainNo
+            responseJson2[i].trainID = trainNo
             
-                for (var i2 = 0; i2 < responseJson[i].timeTableRows.length; i2++){
-                    if (responseJson[i].timeTableRows[i2].stationShortCode === stationShort
-                       && responseJson[i].timeTableRows[i2].type === "DEPARTURE") {
-                    var departureTime = responseJson[i].timeTableRows[i2].scheduledTime
-                    responseJson[i].departureTime = departureTime
+                for (var i2 = 0; i2 < responseJson2[i].timeTableRows.length; i2++){
+                  let d = new Date();
+                  let currentHours = d.getHours();
+                  let currentMins = d.getMinutes();
+
+                  console.log("Tunnit: " + this.formatHours(responseJson2[i].timeTableRows[i2].scheduledTime) + ":" + this.formatMins(responseJson2[i].timeTableRows[i2].scheduledTime));
+                    if (responseJson2[i].timeTableRows[i2].stationShortCode === stationShort
+                       && responseJson2[i].timeTableRows[i2].type === "DEPARTURE" 
+                       && this.formatHours(responseJson2[i].timeTableRows[i2].scheduledTime) >= currentHours
+                       && this.formatMins(responseJson2[i].timeTableRows[i2].scheduledTime) >= currentMins) {
+                    var departureTimeVar = responseJson2[i].timeTableRows[i2].scheduledTime;
+                    responseJson2[i].departureTime = departureTimeVar;
                    }
 /*                 if (responseJson[i].commuterLineID === "P" ||   responseJson[i].commuterLineID === "I"){
                         if (responseJson[i].timeTableRows[i2].stationShortCode === "LEN"){
 */
-                            arrivalStation = responseJson[i].timeTableRows[i2].stationShortCode
-                            responseJson[i].arrivalStation = arrivalStation
+                            arrivalStation = responseJson2[i].timeTableRows[i2].stationShortCode
+                            responseJson2[i].arrivalStation = arrivalStation
 /*                            if (responseJson[i].timeTableRows[i2].type === "ARRIVAL"){
 */
-                                arrivalTime = responseJson[i].timeTableRows[i2].scheduledTime
-                                responseJson[i].arrivalTime = arrivalTime
+                                arrivalTime = responseJson2[i].timeTableRows[i2].scheduledTime
+                                responseJson2[i].arrivalTime = arrivalTime
 /*                            }
                         }
                     }else { 
 */
-                        arrivalStation = responseJson[i].timeTableRows[responseJson[i].timeTableRows.length-1].stationShortCode
-                        responseJson[i].arrivalStation = arrivalStation
-                        arrivalTime = responseJson[i].timeTableRows[responseJson[i].timeTableRows.length-1].scheduledTime
-                        responseJson[i].arrivalTime = arrivalTime
+                        arrivalStation = responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].stationShortCode
+                        responseJson2[i].arrivalStation = arrivalStation
+                        arrivalTime = responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].scheduledTime
+                        responseJson2[i].arrivalTime = arrivalTime
 //                    }
                 }
             // console.log("Length: " + responseJson[i].commuterLineID.length + " LahtoAika: " + this.formatDate(departureTime) + " PaateAsema: " + arrivalStation + " PaateAika: " + this.formatDate(arrivalTime))
@@ -99,19 +94,27 @@ export default class textfield extends Component {
         let ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
         this.setState({
           isLoading: false,
-          dataSource: ds.cloneWithRows(responseJson),
-          json: responseJson
+          dataSource: ds.cloneWithRows(responseJson2),
+          json: responseJson2
         }, function() {
           
         });
       })
+      })
+      
       .catch((error) => {
         console.error(error);
       });
   }
 
   formatDate(date){
-    return moment.utc(date).format("HH:mm")
+    return moment.utc(date).add(2, "hours").format("HH:mm");
+  }
+  formatHours(hour){
+    return moment.utc(hour).add(2, "hours").format("HH");
+  }
+  formatMins(min){
+    return moment.utc(min).format("mm");
   }
 
 lahtoChanged = (lahto) => {
@@ -234,6 +237,3 @@ const styles = StyleSheet.create({
         backgroundColor: '#8E8E8E',
     },
 });
-
-// skip this line if using Create React Native App
-//AppRegistry.registerComponent('AwesomeProject', () => UselessTextInput);
