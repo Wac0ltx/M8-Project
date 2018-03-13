@@ -15,8 +15,22 @@ export default class textfield extends Component {
     componentDidMount() {
         let lahto =  this.state.lahtopaikka;
         let saapumis = "";
-      if (this.state.lahtopaikka.toUpperCase() == "PASILA"){
+      if (lahto.toUpperCase() == "PASILA"){
         lahto = "PSL"
+      }else if (lahto.toUpperCase() == "LEPPÄVAARA"){
+        lahto = "LPV"
+      }else if (lahto.toUpperCase() == "TURKU" || lahto.toUpperCase == "TURKU ASEMA"){
+        lahto = "TKU"
+      }else if (lahto.toUpperCase() == "KIRKKONUMMI"){
+        lahto = "KKN"
+      }else if (lahto.toUpperCase() == "HYVINKÄÄ"){
+        lahto = "HY"
+      }else if (lahto.toUpperCase() == "TAMPERE"){
+        lahto = "TPE"
+      }else if (lahto.toUpperCase() == "TURKU SATAMA"){
+        lahto = "TUS"
+      }else if (lahto.toUpperCase() == "ESPOO"){
+         lahto = "EPO"
       }else {
         lahto = "HKI"
       };
@@ -80,7 +94,7 @@ export default class textfield extends Component {
   }
 
   formatDate(date){
-    return moment.utc(date).format("HH:mm")
+    return moment.utc(date).add(2, "hours").format("HH:mm")
   }
 
 lahtoChanged = (lahto) => {
@@ -206,6 +220,3 @@ const styles = StyleSheet.create({
         backgroundColor: '#8E8E8E',
     },
 });
-
-// skip this line if using Create React Native App
-//AppRegistry.registerComponent('AwesomeProject', () => UselessTextInput);
