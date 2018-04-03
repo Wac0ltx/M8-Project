@@ -19,9 +19,6 @@ export default class textfield extends Component {
       let stationName = '';
       let stationShort = 'HKI';
       let meta = this.state.meta;
-      let trainNo = "";
-      let arrivalStation = "";
-      let arrivalTime = "";
 
       fetch('https://rata.digitraffic.fi/api/v1/metadata/stations')
       .then((response) => response.json())
@@ -48,49 +45,93 @@ export default class textfield extends Component {
     fetch('https://rata.digitraffic.fi/api/v1/live-trains/station/' + this.state.stationShort)
       .then((response2) => response2.json())
       .then((responseJson2) => {
-        for (var i = 0; i < responseJson2.length; i++){
-            
-            if (responseJson2[i].commuterLineID !== ""){
-                trainNo = responseJson2[i].commuterLineID
-            }else {
-                trainNo = responseJson2[i].trainNumber
-            }
-            responseJson2[i].trainID = trainNo
-            
-                for (var i2 = 0; i2 < responseJson2[i].timeTableRows.length; i2++){
-                  let d = new Date();
-                  let currentHours = d.getHours();
-                  let currentMins = d.getMinutes();
 
-                  console.log("Tunnit: " + this.formatHours(responseJson2[i].timeTableRows[i2].scheduledTime) + ":" + this.formatMins(responseJson2[i].timeTableRows[i2].scheduledTime));
-                    if (responseJson2[i].timeTableRows[i2].stationShortCode === stationShort
-                       && responseJson2[i].timeTableRows[i2].type === "DEPARTURE" 
-                       && this.formatHours(responseJson2[i].timeTableRows[i2].scheduledTime) >= currentHours
-                       && this.formatMins(responseJson2[i].timeTableRows[i2].scheduledTime) >= currentMins) {
-                    var departureTimeVar = responseJson2[i].timeTableRows[i2].scheduledTime;
-                    responseJson2[i].departureTime = departureTimeVar;
-                   }
-/*                 if (responseJson[i].commuterLineID === "P" ||   responseJson[i].commuterLineID === "I"){
-                        if (responseJson[i].timeTableRows[i2].stationShortCode === "LEN"){
-*/
-                            arrivalStation = responseJson2[i].timeTableRows[i2].stationShortCode
-                            responseJson2[i].arrivalStation = arrivalStation
-/*                            if (responseJson[i].timeTableRows[i2].type === "ARRIVAL"){
-*/
-                                arrivalTime = responseJson2[i].timeTableRows[i2].scheduledTime
-                                responseJson2[i].arrivalTime = arrivalTime
-/*                            }
-                        }
-                    }else { 
-*/
-                        arrivalStation = responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].stationShortCode
-                        responseJson2[i].arrivalStation = arrivalStation
-                        arrivalTime = responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].scheduledTime
-                        responseJson2[i].arrivalTime = arrivalTime
-//                    }
-                }
-            // console.log("Length: " + responseJson[i].commuterLineID.length + " LahtoAika: " + this.formatDate(departureTime) + " PaateAsema: " + arrivalStation + " PaateAika: " + this.formatDate(arrivalTime))
+        let d = new Date();
+        let currentHours = d.getHours();
+        let currentMins = d.getMinutes();
+        let trainNo = "";
+        let arrivalStation = "";
+        let arrivalTime = "";
+        let departureTime = "";
+        let trainNum = "";
+
+        
+        for (var i = 0; i < responseJson2.length; i++){
+          
+          if (responseJson2[i].commuterLineID !== ""
+            && responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].stationShortCode !== stationShort
+            || responseJson2[i].commuterLineID === "P"
+            || responseJson2[i].commuterLineID === "I"){
+              trainNo = responseJson2[i].commuterLineID
+          }else if (responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].stationShortCode !== stationShort){
+            trainNo = responseJson2[i].trainNumber
+          }else {trainNo = undefined}
+        
+          for (var i2 = 0; i2 < responseJson2[i].timeTableRows.length; i2++){
+
+            if (responseJson2[i].timeTableRows[i2].stationShortCode === stationShort
+              && responseJson2[i].timeTableRows[i2].type === "DEPARTURE"
+              && moment(responseJson2[i].timeTableRows[i2].scheduledTime).isSameOrAfter(d)
+              && responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].stationShortCode !== stationShort
+              && responseJson2[i].timeTableRows[i2].scheduledTime !== responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].scheduledTime) {
+                departureTime = responseJson2[i].timeTableRows[i2].scheduledTime;
+                //console.log(trainNo + " " + departureTime + " " + this.formatDate(departureTime));
+            }else if (responseJson2[i].timeTableRows[i2].stationShortCode === stationShort
+              && responseJson2[i].timeTableRows[i2].type === "DEPARTURE"
+              && moment(responseJson2[i].timeTableRows[i2].scheduledTime).isSameOrAfter(d)
+              && responseJson2[i].timeTableRows[i2].scheduledTime !== responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].scheduledTime
+              && responseJson[i].commuterLineID === "P"
+              || responseJson2[i].commuterLineID === "I"){
+                departureTime = responseJson2[i].timeTableRows[i2].scheduledTime;
+                console.log(trainNo + " " + departureTime + " " + this.formatDate(departureTime));
+            }else {departureTime == undefined}
+
+            if (responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].stationShortCode !== stationShort
+              && responseJson2[i].timeTableRows[i2].type === "ARRIVAL"
+              && moment(responseJson2[i].timeTableRows[i2].scheduledTime).isAfter(departureTime)){
+                arrivalStation = responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].stationShortCode
+                arrivalTime = responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].scheduledTime
+            }else if (responseJson2[i].timeTableRows[i2].stationShortCode === "LEN"
+            && responseJson2[i].timeTableRows[i2].type === "ARRIVAL"
+            && moment(responseJson2[i].timeTableRows[i2].scheduledTime).isSameOrAfter(departureTime)
+            && responseJson2[i].commuterLineID === "P" 
+            || responseJson2.commuterLineID === "I"){
+              arrivalStation = responseJson2[i].timeTableRows[i2].stationShortCode
+              arrivalTime = responseJson2[i].timeTableRows[i2].scheduledTime
+              //console.log(trainNo + " " + arrivalStation + " " + arrivalTime);
+            }else {
+              arrivalStation == null;
+              arrivalTime == null;
+            }
+          }
+
+          if (trainNo !== undefined){
+            responseJson2[i].trainID = trainNo;
+          }else {
+            responseJson2[i].trainID = "Error";
+          }
+
+          if (departureTime !== undefined){
+            responseJson2[i].departureTime = departureTime;
+            //console.log(trainNo + " " + departureTime + " " + this.formatDate(departureTime));
+          }else {
+            responseJson2[i].departureTime = "Error";
+          }
+
+          if (arrivalTime !== undefined
+            && arrivalStation !== undefined){
+              responseJson2[i].arrivalStation = arrivalStation;
+              responseJson2[i].arrivalTime = arrivalTime;
+          }else {
+            responseJson2[i].arrivalStation = "Error";
+            responseJson2[i].arrivalTime = "Error";
+          }
+
+          //console.log("ID: " + trainNo + " lahto " + this.formatDate(departureTime) + " saapuu: " + arrivalStation + " " + this.formatDate(arrivalTime));
+          
+          responseJson2[i].allData = trainNo + " " + this.formatDate(departureTime) + " " + this.formatDate(arrivalTime) + " " + arrivalStation;
         }
+
         let ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
         this.setState({
           isLoading: false,
@@ -108,13 +149,8 @@ export default class textfield extends Component {
   }
 
   formatDate(date){
-    return moment.utc(date).add(2, "hours").format("HH:mm");
-  }
-  formatHours(hour){
-    return moment.utc(hour).add(2, "hours").format("HH");
-  }
-  formatMins(min){
-    return moment.utc(min).format("mm");
+    let str = moment.utc(date).add(3, "hours").format("HH:mm");
+    return str;
   }
 
 lahtoChanged = (lahto) => {
