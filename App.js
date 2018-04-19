@@ -65,26 +65,40 @@ export default class textfield extends Component {
 
         for (var i = 0; i < responseJson2.length; i++){
 
-          if (responseJson2[i].commuterLineID !== ""){
-            var visibleTrains = responseJson2.filter(function (el){
-              return el.trainNumber
-                  && el.timeTableRows.find(function (el){
-                    return el.stationShortCode === stationShort 
-                        && moment(el.scheduledTime).isSameOrAfter(d)
-                        && el.type === "DEPARTURE"
-                  })
-            }).map(function(el) {
+          
+          var visibleTrains = responseJson2.filter(function (el){
+            return el.trainNumber
+                && el.timeTableRows.find(function (el){
+                  return el.stationShortCode === stationShort 
+                      && moment(el.scheduledTime).isSameOrAfter(d)
+                      && el.type === "DEPARTURE"
+                })
+          }).map(function(el) {
+            if (el.commuterLineID !== ""){
               return el.commuterLineID
-            });
-          }
+            }else {
+              return el.trainNumber
+            }
+          });
+          //console.log(visibleTrains);
           
-          
+          //console.log(moment(responseJson2[i].timeTableRows[0].scheduledTime).isSameOrAfter(d))
           var arrivalsStation = responseJson2[i].timeTableRows.filter(function (el) {
-            return el.stationShortCode === "LEN"
-                && el.TYPE === "ARRIVAL"
+            if (moment(responseJson2[i].timeTableRows[0].scheduledTime).isSameOrAfter(d)){
+            return el.stationShortCode === responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].stationShortCode
+                && el.type === "ARRIVAL"
+            }
           }).map(function(el) {
             return el.stationShortCode
-                && el.scheduledTime
+          });
+          //console.log(arrivalsStation);
+          var arrivalsTime = responseJson2[i].timeTableRows.filter(function (el) {
+            if (moment(responseJson2[i].timeTableRows[0].scheduledTime).isSameOrAfter(d)){
+            return el.stationShortCode === responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].stationShortCode
+                && el.type === "ARRIVAL"
+            }
+          }).map(function(el) {
+            return el.scheduledTime
           });
 
           var departures = responseJson2[i].timeTableRows.filter(function (el) {
@@ -94,16 +108,23 @@ export default class textfield extends Component {
           }).map(function (el) {
             return el.scheduledTime
           });
-          //console.log(departures);
+
           for (let i = 0; i < departures.length; i++){
-            responseJson2.arrivalsStation = this.formatDate(departures[0]);
-            console.log(responseJson2.arrivalsStation);
+            responseJson2.departingTime = this.formatDate(departures[0]);
+            responseJson2.lastStop = arrivalsStation[0];
+            responseJson2.lastTime = this.formatDate(arrivalsTime[0]);
+            console.log("lähtee: " + responseJson2.departingTime);
+            console.log("Saapuu: " + responseJson2.lastStop);
+            console.log("kello: " + responseJson2.lastTime);
           }
         }
-        console.log(visibleTrains);
-        //console.log("arrivalsStation " + arrivalsStation.length);
+
+        for (let i = 0; i < visibleTrains.length; i++){
+          responseJson2.visibleTrains = visibleTrains[i];
+          console.log("Juna: " + responseJson2.visibleTrains);
+        }
         
-        for (var i = 0; i < responseJson2.length; i++){
+/*        for (var i = 0; i < responseJson2.length; i++){
 
           if (responseJson2[i].commuterLineID !== ""
             && responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].stationShortCode !== stationShort
@@ -209,7 +230,7 @@ export default class textfield extends Component {
           //console.log("ID: " + trainNo + " lahto " + this.formatDate(departureTime) + " saapuu: " + arrivalStation + " " + this.formatDate(arrivalTime));
           
           responseJson2[i].allData = trainNo + " " + this.formatDate(departureTime) + " " + this.formatDate(arrivalTime) + " " + arrivalStation;
-        }
+        }*/
 
         let ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
         this.setState({
@@ -217,7 +238,6 @@ export default class textfield extends Component {
           dataSource: ds.cloneWithRows(responseJson2),
           json: responseJson2
         }, function() {
-          
         });
       })
       })
@@ -226,7 +246,6 @@ export default class textfield extends Component {
         console.error(error);
       });
   }
-
   formatDate(date){
     let str = moment.utc(date).add(3, "hours").format("HH:mm");
     return str;
@@ -276,10 +295,10 @@ lahtoChanged = (lahto) => {
                     flexDirection: 'row',
                     alignItems: 'center',
                 }}>
-                    <Text style={styles.junatext2}>{rowData.trainID}&emsp;</Text>
-                    <Text style={styles.junatext3}>{this.formatDate(rowData.departureTime)}</Text>
-                    <Text style={styles.junatext4}>{rowData.arrivalStation}</Text>
-                    <Text style={styles.junatext5}>{this.formatDate(rowData.arrivalTime)}</Text>
+                    <Text style={styles.junatext2}>{rowData.visibleTrains}&emsp;</Text>
+                    <Text style={styles.junatext3}>{rowData.departures}</Text>
+                    <Text style={styles.junatext4}>{rowData.lastStop}</Text>
+                    <Text style={styles.junatext5}>{rowData.lastTime}</Text>
             </View>
             }
             renderSeparator={(sectionId, rowId) => <View key={rowId} style={styles.separator}/>}
