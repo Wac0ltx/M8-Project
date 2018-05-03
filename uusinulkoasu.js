@@ -1,70 +1,81 @@
 import React, { Component } from 'react';
-import {
-  StyleSheet,
-  AppRegistry,
-  Text,
-  TextInput,
-  View,
-  ActivityIndicator,
-  ListView,
-  SectionList,
-  Alert,
-  FlatList,
-  MyItem,
-} from 'react-native';
+import { StyleSheet, AppRegistry, Text, TextInput, View, ActivityIndicator, ListView } from 'react-native';
 import moment from 'moment';
-import{ List, ListItem } from 'react-native-elements';
 
-class JunaApp extends Component {
+export default class textfield extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      isLoading: false,
-      trains: [],
-       text: '',
-      lahtopaikka: 'helsinki',
-      saapumispaikka: '',
-      stationShort: 'HKI',
-      meta: '',
-      refreshing: false,
-    };
+        isLoading: true,
+        text: '',
+        lahtopaikka: 'helsinki',
+        saapumispaikka: '',
+        stationShort: 'HKI',
+        stationShort2: '',
+        meta: '',
+        timeUrl: '?departing_trains=6&departed_trains=0&arrived_trains=0&arriving_trains=0',
+        kolmas: 'Pääteasema',
+        trains:[],
+        test:''
+      };
   }
 
-      componentDidMount() {
-
+    componentDidMount() { 
       let stationName = '';
       let stationShort = 'HKI';
       let meta = this.state.meta;
+      let timeUrl = this.state.timeUrl;
+      let foo = new Date();
+      let stationShort2 = '';
+      var bar = foo.toISOString();
+    
       
+      //  geolib
+
 
       fetch('https://rata.digitraffic.fi/api/v1/metadata/stations')
       .then((response) => response.json())
       .then((responseJson) => {
-        this.setState({meta: responseJson});
+        this.setState({meta: responseJson, test:bar});
 
         for (var i3 = 0; i3 < meta.length; i3++){
-          if (meta[i3].stationName.split(' asema')[0].toUpperCase() === this.state.lahtopaikka.toUpperCase() && meta[i3].stationName !== "Helsinki Kivihaka"){
-            this.setState({stationShort: meta[i3].stationShortCode})
+          if (meta[i3].stationName.split(' asema')[0].toUpperCase() === this.state.lahtopaikka.toUpperCase()){
+            this.setState({stationShort: meta[i3].stationShortCode});
+            stationShort = this.state.stationShort;
           }else if (meta[i3].stationName.toUpperCase() === this.state.lahtopaikka.toUpperCase()){
-            this.setState({stationShort: meta[i3].stationShortCode})
-          }else if (responseJson[i3].stationName === "Helsinki Kivihaka"){
-            stationShort = "KHK";
+            this.setState({stationShort: meta[i3].stationShortCode});
           }else {
-            stationShort = "ERROR";
+            stationShort = "HKI";
           }
+
+          if (meta[i3].stationName.split(' asema')[0].toUpperCase() === this.state.saapumispaikka.toUpperCase()){
+            this.setState({stationShort2: meta[i3].stationShortCode});
+          }else if (meta[i3].stationName.toUpperCase() === this.state.saapumispaikka.toUpperCase()){
+            this.setState({stationShort2: meta[i3].stationShortCode});
+                stationShort2 = this.state.stationShort2;
+          }else {
+            stationShort2 = "";
+          }
+
           if (meta[i3].stationShortCode === this.state.stationShort){
             if (meta[i3].stationName !== "Helsinki Kivihaka"){
-              stationName = meta[i3].stationName.split(' asema')[0]
+              stationName = meta[i3].stationName.split(' asema')[0];
             }
           }
+          
         }
-    
+        if(this.state.stationShort2 !== ''){
+            this.setState({timeUrl: '/'+this.state.stationShort2+'?startDate='+ bar +'&limit=6'})
+          }else{
+            this.setState({timeUrl:'?departing_trains=6&departed_trains=0&arrived_trains=0&arriving_trains=0', kolmas:'Pääteasema'});
 
-    const url = 'https://rata.digitraffic.fi/api/v1/live-trains/station/' + this.state.stationShort;
-   fetch(url)
-      .then(response2 => response2.json())
-      .then(responseJson2 => {
-         
+          }
+        stationShort2 = this.state.stationShort2;
+        stationShort = this.state.stationShort;
+    fetch('https://rata.digitraffic.fi/api/v1/live-trains/station/' + this.state.stationShort + this.state.timeUrl)
+      .then((response2) => response2.json())
+      .then((responseJson2) => {
+
         let d = new Date();
         let currentHours = d.getHours();
         let currentMins = d.getMinutes();
@@ -73,100 +84,97 @@ class JunaApp extends Component {
         let arrivalTime = "";
         let departureTime = "";
         let trainNum = "";
-        
+
         for (var i = 0; i < responseJson2.length; i++){
+
           
-          if (responseJson2[i].commuterLineID !== ""
-            && responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].stationShortCode !== stationShort
-            || responseJson2[i].commuterLineID === "P"
-            || responseJson2[i].commuterLineID === "I"){
-              trainNo = responseJson2[i].commuterLineID
-          }else if (responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].stationShortCode !== stationShort){
-            trainNo = responseJson2[i].trainNumber
-          }else if (responseJson2[i].trainType == 'IC') {
-            trainNo = 'IC' + ' ' +responseJson2[i].trainNumber;
-          } else if (responseJson2[i].trainType == 'S') {
-            trainNo = 'S' + ' ' + responseJson2[i].trainNumber;
-          } else if (responseJson2[i].trainType == 'PYO') {
-            trainNo = 'PYO' + ' ' + responseJson2[i].trainNumber;
-          } else if (responseJson2[i].trainType == 'AE') {
-            trainNo = 'AE' + ' ' + responseJson2[i].trainNumber;
-          } else {
-            trainNo = undefined;
-            
-          }
-        
-          for (var i2 = 0; i2 < responseJson2[i].timeTableRows.length; i2++){
-
-            if (responseJson2[i].timeTableRows[i2].stationShortCode === stationShort
-              && responseJson2[i].timeTableRows[i2].type === "DEPARTURE"
-              && moment(responseJson2[i].timeTableRows[i2].scheduledTime).isSameOrAfter(d)
-              && responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].stationShortCode !== stationShort
-              && responseJson2[i].timeTableRows[i2].scheduledTime !== responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].scheduledTime) {
-                departureTime = responseJson2[i].timeTableRows[i2].scheduledTime;
-                //console.log(trainNo + " " + departureTime + " " + this.formatDate(departureTime));
-            }else if (responseJson2[i].timeTableRows[i2].stationShortCode === stationShort
-              && responseJson2[i].timeTableRows[i2].type === "DEPARTURE"
-              && moment(responseJson2[i].timeTableRows[i2].scheduledTime).isSameOrAfter(d)
-              && responseJson2[i].timeTableRows[i2].scheduledTime !== responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].scheduledTime
-              && responseJson[i].commuterLineID === "P"
-              || responseJson2[i].commuterLineID === "I"){
-                departureTime = responseJson2[i].timeTableRows[i2].scheduledTime;
-                //console.log(trainNo + " " + departureTime + " " + this.formatDate(departureTime));
-            }else {departureTime == undefined}
-
-            if (responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].stationShortCode !== stationShort
-              && responseJson2[i].timeTableRows[i2].type === "ARRIVAL"
-              && moment(responseJson2[i].timeTableRows[i2].scheduledTime).isAfter(departureTime)){
-                arrivalStation = responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].stationShortCode
-                arrivalTime = responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].scheduledTime
-            }else if (responseJson2[i].timeTableRows[i2].stationShortCode === "LEN"
-            && responseJson2[i].timeTableRows[i2].type === "ARRIVAL"
-            && moment(responseJson2[i].timeTableRows[i2].scheduledTime).isSameOrAfter(departureTime)
-            && responseJson2[i].commuterLineID === "P" 
-            || responseJson2.commuterLineID === "I"){
-              arrivalStation = responseJson2[i].timeTableRows[i2].stationShortCode
-              arrivalTime = responseJson2[i].timeTableRows[i2].scheduledTime
-              //console.log(trainNo + " " + arrivalStation + " " + arrivalTime);
+          var visibleTrains = responseJson2.filter(function (el){
+            return el.trainNumber
+                && el.timeTableRows.find(function (el){
+                  return el.stationShortCode === stationShort 
+                      && el.type === "DEPARTURE"
+                })
+          }).map(function(el) {
+            if (el.commuterLineID !== ""){
+              return el.commuterLineID
             }else {
-              arrivalStation == null;
-              arrivalTime == null;
+              return el.trainNumber
             }
-          }
+          });
+          
+          
+      
+          var arrivalsStation = responseJson2[i].timeTableRows.filter(function (el) {
+            return el.stationShortCode === responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].stationShortCode
+                && el.type === "ARRIVAL"
+          }).map(function(el) {
+            return el.stationShortCode
+          });
+        
+          var arrivalsTime = responseJson2[i].timeTableRows.filter(function (el) {
+            return el.stationShortCode === responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].stationShortCode
+                && el.type === "ARRIVAL"
+                && el.scheduledTime.length > 0;
+          }).map(function(el) {
+            return el.scheduledTime
+          });
+                      
+            var departures = responseJson2[i].timeTableRows.filter(function (el) {
+            return el.stationShortCode === stationShort
+                && el.type === "DEPARTURE"
+          }).map(function (el) {
+            return el.scheduledTime
+          });
+          if(stationShort2 !== ''){
+          console.log(stationShort2);
+          var arrivals = responseJson2[i].timeTableRows.filter(function (el) {
+            return el.stationShortCode === stationShort2
+                && el.type === "ARRIVAL"
+               
+          }).map(function (el) {
+            return el.scheduledTime
+            
+          });
+          var raide = responseJson2[i].timeTableRows.filter(function (el) {
+            return el.stationShortCode === stationShort
+                && el.type === "DEPARTURE"
+          }).map(function(el) {
+            return el.commercialTrack
+          });
 
-          if (trainNo !== undefined){
-            responseJson2[i].trainID = trainNo;
-          }else {
-            responseJson2[i].trainID = "Error";
           }
+          
 
-          if (departureTime !== undefined){
-            responseJson2[i].departureTime = departureTime;
-           
-          }else {
-            responseJson2[i].departureTime = "Error";
+         
+         // responseJson2[i].lastStop = arrivalsStation;
+          responseJson2[i].departingTime = departures[0];
+          responseJson2[i].visibleTrains = visibleTrains[i];
+          
+          if(stationShort2 === ''){
+          responseJson2[i].saapumisTime = this.formatDate(arrivalsTime[0]);
+          responseJson2[i].lastStop = arrivalsStation;
+          }else{
+          responseJson2[i].saapumisTime = this.formatDate(arrivals[0]);
+          responseJson2[i].lastStop = raide;
+          this.setState({stationShort2:''});
           }
-
-          if (arrivalTime !== undefined
-            && arrivalStation !== undefined){
-              responseJson2[i].arrivalStation = arrivalStation;
-              responseJson2[i].arrivalTime = arrivalTime;
-          }else {
-            responseJson2[i].arrivalStation = "Error";
-            responseJson2[i].arrivalTime = "Error";
-          }
-
-          responseJson2[i].allData = trainNo + " " + this.formatDate(departureTime) + " " + this.formatDate(arrivalTime) + " " + arrivalStation;
         }
 
+        let ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
         this.setState({
-          trains: responseJson2,
-          refreshing: false
+          isLoading: false,
+          dataSource: ds.cloneWithRows(responseJson2),
+          json: responseJson2,
+          trains: responseJson2
+        }, function() {
         });
+      })
+      })
+      
+      .catch((error) => {
+        console.error(error);
       });
-      });
-  
-}
+  }
   formatDate(date){
     let str = moment.utc(date).add(3, "hours").format("HH:mm");
     return str;
@@ -176,58 +184,56 @@ lahtoChanged = (lahto) => {
   this.setState({lahtopaikka: lahto}, () => this.componentDidMount() );
 }
 
+saapumisChanged = (saapumis) => {
+  this.setState({saapumispaikka: saapumis, kolmas: 'Lähtöraide'}, () => this.componentDidMount() );
+  
+}
 
   render() {
-    
-    if (this.state.isLoading) {
+          if (this.state.isLoading) {
       return (
-        <View style={{ flex: 1, paddingTop: 20 }}>
+        <View style={{flex: 1, paddingTop: 20}}>
           <ActivityIndicator />
         </View>
       );
+    }  
+    function sortF(a,b){
+      var dateA = new Date(a.departingTime).getTime();
+      var dateB = new Date(b.departingTime).getTime();
+      return dateA > dateB ? 1 : -1;
     }
-  
-    const sorted = this.state.trains.sort(function(a,b){
-     return a.departureTime > b.departureTime ? 1 : a.departureTime < b.departureTime ? -1 : 0;
-    });
-    const sliced = sorted.slice(0, 6);
     
-      const itemRows = sliced.map(train => (
+           const itemRows = this.state.trains.sort(sortF).map(train => (
       <View key={train.trainNumber} style={styles.row1}>
-        <Text style={styles.junatext2}>{train.trainID}&emsp;</Text>
-        <Text style={styles.junatext3}>
-          {this.formatDate(train.departureTime)}
-        </Text>
-        <Text style={styles.junatext4}>{train.arrivalStation}</Text>
-        <Text style={styles.junatext5}>
-          {this.formatDate(train.arrivalTime)}
-        </Text>
+        <Text style={styles.junatext2}>{train.visibleTrains}&emsp;</Text>
+        <Text style={styles.junatext3}>{this.formatDate(train.departingTime)}</Text>
+        <Text style={styles.junatext4}>{train.lastStop}</Text>
+        <Text style={styles.junatext5}>{train.saapumisTime}</Text>
       </View>
-    ));
-   
+));
+
+
     return (
-      
-      <View style={{ flex: 1, paddingTop: 20 }}>
-        <View style={styles.container}>
-          <View>
-            <TextInput
-              style={styles.textinput1}
-              placeholder="Lähtöpaikka"
-              onChangeText={this.lahtoChanged}
-            />
-            <TextInput
-              style={styles.textinput2}
-              placeholder="Pääteasema"
-              onChangeText={text => this.setState({ paateasema: text })}
-            />
-          </View >
+         <View style={{flex: 1, paddingTop: 20}}>
+            <View style={styles.container}>
+            <View>
+              <TextInput
+                style={styles.textinput1}
+                placeholder="Lähtöpaikka"
+                onChangeText={this.lahtoChanged}
+              />
+              <TextInput
+                style={styles.textinput2}
+                placeholder="Pääteasema"
+                onChangeText={this.saapumisChanged}
+              />
+            </View>
           <View style={styles.container1}>
            <View style={{ flexDirection: 'row' }}>
             <Text style={styles.junatext}>Juna</Text>
-             <Text style={styles.junatext1}>Raide</Text>
-            <Text style={styles.junatext1}>Lähtee</Text>
-            <Text style={styles.junatext1}>Pääteasema</Text>
-            <Text style={styles.junatext1}>Saapuu</Text>
+            <Text style={styles.junatext6}>Lähtee</Text>
+            <Text style={styles.junatext6}>{this.state.kolmas}</Text>
+            <Text style={styles.junatext6}>Saapuu</Text>
           </View>
         {itemRows}
         </View>
@@ -238,7 +244,6 @@ lahtoChanged = (lahto) => {
   }
 }
 
-export default JunaApp;
 
 const styles = StyleSheet.create({
   container: {
@@ -250,7 +255,7 @@ const styles = StyleSheet.create({
     marginTop:30,
     backgroundColor: 'white',
     borderRadius:20,
-    width:350,
+    width:330,
     height: 450,
      marginLeft: 13,
      fontSize: 14,
@@ -265,7 +270,7 @@ const styles = StyleSheet.create({
   },
   textinput1: {
     height: 40,
-    width:350,
+    width:330,
     borderWidth: 1,
     backgroundColor: 'white',
     borderRadius: 15,
@@ -275,7 +280,7 @@ const styles = StyleSheet.create({
   },
    textinput2: {
     height: 40,
-    width:350,
+    width:330,
     borderWidth: 1,
     backgroundColor: 'white',
     borderRadius: 15,
@@ -302,16 +307,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   junatext2: {
-    marginLeft: 15,
+    marginLeft: 20,
      fontSize: 14,
   },
   junatext3: {
     position: 'absolute',
-    left: 120,
+    left: 80,
     fontSize: 14,
   },
   junatext4: {
-    marginLeft: 200,
+    marginLeft: 180,
     position: 'absolute',
    fontSize: 14,
   },
@@ -319,7 +324,13 @@ const styles = StyleSheet.create({
     marginLeft: 15,
     position: 'absolute',
     fontSize: 14,
-    right:1 ,
+    right:20 ,
+  },
+  
+  junatext6: {
+    marginLeft: 35,
+    marginTop: 10,
+    fontSize: 14,
   },
   separator: {
     flex: 1,
