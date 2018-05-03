@@ -1,6 +1,9 @@
 import React, { Component } from 'react';
 import { StyleSheet, AppRegistry, Text, TextInput, View, ActivityIndicator, ListView } from 'react-native';
 import moment from 'moment';
+import {geolocated} from 'react-geolocated';
+import geolib from 'geolib';
+import 'mt-latlon';
 
 export default class textfield extends Component {
   constructor(props) {
@@ -12,57 +15,69 @@ export default class textfield extends Component {
         saapumispaikka: '',
         stationShort: 'HKI',
         stationShort2: '',
-        meta: '',
       };
   }
 
     componentDidMount() {
       let stationName = '';
       let stationShort = 'HKI';
-      let meta = this.state.meta;
-
-      //  geolib
-
-
+      var geolocation = null;
+      
       fetch('https://rata.digitraffic.fi/api/v1/metadata/stations')
       .then((response) => response.json())
       .then((responseJson) => {
-        this.setState({meta: responseJson});
 
-        for (var i3 = 0; i3 < meta.length; i3++){
-          if (meta[i3].stationName.split(' asema')[0].toUpperCase() === this.state.lahtopaikka.toUpperCase()){
-            this.setState({stationShort: meta[i3].stationShortCode});
+        for (var i3 = 0; i3 < responseJson.length; i3++){
+          if (responseJson[i3].stationName.split(' asema')[0].toUpperCase() === this.state.lahtopaikka.toUpperCase()){
+            this.setState({stationShort: responseJson[i3].stationShortCode});
             stationShort = this.state.stationShort;
-          }else if (meta[i3].stationName.toUpperCase() === this.state.lahtopaikka.toUpperCase()){
-            this.setState({stationShort: meta[i3].stationShortCode});
-          }else {
-            stationShort = "HKI";
+          }else if (responseJson[i3].stationName.toUpperCase() === this.state.lahtopaikka.toUpperCase()){
+            this.setState({stationShort: responseJson[i3].stationShortCode});
           }
 
-          if (meta[i3].stationName.split(' asema')[0].toUpperCase() === this.state.saapumispaikka.toUpperCase()){
-            this.setState({stationShort: meta[i3].stationShortCode});
+          if (responseJson[i3].stationName.split(' asema')[0].toUpperCase() === this.state.saapumispaikka.toUpperCase()){
+            this.setState({stationShort: responseJson[i3].stationShortCode});
             stationShort2 = this.state.stationShort2;
-          }else if (meta[i3].stationName.toUpperCase() === this.state.saapumispaikka.toUpperCase()){
-            this.setState({stationShort2: meta[i3].stationShortCode});
-          }else {
-            stationShort2 = "";
+          }else if (responseJson[i3].stationName.toUpperCase() === this.state.saapumispaikka.toUpperCase()){
+            this.setState({stationShort2: responseJson[i3].stationShortCode});
           }
 
-          if (meta[i3].stationShortCode === this.state.stationShort){
-            if (meta[i3].stationName !== "Helsinki Kivihaka"){
-              stationName = meta[i3].stationName.split(' asema')[0];
+          if (responseJson[i3].stationShortCode === this.state.stationShort){
+            if (responseJson[i3].passengerTraffic !== false){
+              stationName = responseJson[i3].stationName.split(' asema')[0];
             }
           }
 
-          if (this.state.stationShort2 !== ""){
-            let timeUrl = "aika";
-          }else {
-            timeUrl = "";
-          }
+          var stationLocations = responseJson.filter(function (el) {
+            return el.passengerTraffic === true
+          });
         }
 
+        var nearestStop = "";
+        var distance = "";
+        if (window.navigator && window.navigator.geolocation) {
+          geolocation = window.navigator.geolocation;
+        }
+        if (geolocation) {
+          geolocation.getCurrentPosition(function(position) {
+            console.log("blabla");
+            distance = geolib.orderByDistance({latitude: position.coords.latitude, longitude: position.coords.longitude},
+              stationLocations
+            );
+            nearestStop = stationLocations[distance[0].key].stationShortCode;
+            console.log(nearestStop);
+            
+            this.setState({stationShort: stationLocations[distance[0].key].stationShortCode});
+          });
+          console.log("fuck " + distance);
+        }else {
+          console.log("geolocation not working");
+        };
+
+        console.log("you " + nearestStop);
+        console.log(this.state.stationShort);
         stationShort = this.state.stationShort;
-    fetch('https://rata.digitraffic.fi/api/v1/live-trains/station/' + this.state.stationShort + "/" + this.state.stationShort2 + '?departing_trains=10&departed_trains=0&arrived_trains=0&arriving_trains=0')
+    fetch('https://rata.digitraffic.fi/api/v1/live-trains/station/' + this.state.stationShort + "/" + this.state.stationShort2 + '?departing_trains=16&departed_trains=0&arrived_trains=0&arriving_trains=0')
       .then((response2) => response2.json())
       .then((responseJson2) => {
 
