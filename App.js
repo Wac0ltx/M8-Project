@@ -27,18 +27,23 @@ export default class textfield extends Component {
       .then((response) => response.json())
       .then((responseJson) => {
 
+
         for (var i3 = 0; i3 < responseJson.length; i3++){
-          if (responseJson[i3].stationName.split(' asema')[0].toUpperCase() === this.state.lahtopaikka.toUpperCase()){
+          if (responseJson[i3].stationName.split(' asema')[0].toUpperCase() === this.state.lahtopaikka.toUpperCase()
+              && responseJson[i3].passengerTraffic !== false){
             this.setState({stationShort: responseJson[i3].stationShortCode});
             stationShort = this.state.stationShort;
-          }else if (responseJson[i3].stationName.toUpperCase() === this.state.lahtopaikka.toUpperCase()){
+          }else if (responseJson[i3].stationName.toUpperCase() === this.state.lahtopaikka.toUpperCase()
+              && responseJson[i3].passengerTraffic !== false){
             this.setState({stationShort: responseJson[i3].stationShortCode});
           }
 
-          if (responseJson[i3].stationName.split(' asema')[0].toUpperCase() === this.state.saapumispaikka.toUpperCase()){
+          if (responseJson[i3].stationName.split(' asema')[0].toUpperCase() === this.state.saapumispaikka.toUpperCase()
+              && responseJson[i3].passengerTraffic !== false){
             this.setState({stationShort: responseJson[i3].stationShortCode});
             stationShort2 = this.state.stationShort2;
-          }else if (responseJson[i3].stationName.toUpperCase() === this.state.saapumispaikka.toUpperCase()){
+          }else if (responseJson[i3].stationName.toUpperCase() === this.state.saapumispaikka.toUpperCase()
+              && responseJson[i3].passengerTraffic !== false){
             this.setState({stationShort2: responseJson[i3].stationShortCode});
           }
 
@@ -58,7 +63,10 @@ export default class textfield extends Component {
         if (window.navigator && window.navigator.geolocation) {
           geolocation = window.navigator.geolocation;
         }
+
+        let functionDone = false;
         if (geolocation) {
+          function plotNearestStat(){
           geolocation.getCurrentPosition(function(position) {
             console.log("blabla");
             distance = geolib.orderByDistance({latitude: position.coords.latitude, longitude: position.coords.longitude},
@@ -66,20 +74,37 @@ export default class textfield extends Component {
             );
             nearestStop = stationLocations[distance[0].key].stationShortCode;
             console.log(nearestStop);
-            
-            this.setState({stationShort: stationLocations[distance[0].key].stationShortCode});
+            //this.setState({stationShort: nearestStop});
+            //console.log("hey: " + this.state.stationShort)
+            functionDone = true;
           });
-          console.log("fuck " + distance);
+        }
+          
+          
         }else {
           console.log("geolocation not working");
-        };
+          functionDone = true;
+        }
 
-        console.log("you " + nearestStop);
+        if (functionDone == true) {
+          console.log("true" + nearestStop)
+        }else {console.log("false")}
+
         console.log(this.state.stationShort);
+
+        while (functionDone == true){
+        console.log("tänne pitää saada oikea arvo " + nearestStop);
+        console.log("jos HKI niin false: " + this.state.stationShort);
+        
+        }
+
         stationShort = this.state.stationShort;
+        console.log("vika");
+        
     fetch('https://rata.digitraffic.fi/api/v1/live-trains/station/' + this.state.stationShort + "/" + this.state.stationShort2 + '?departing_trains=16&departed_trains=0&arrived_trains=0&arriving_trains=0')
       .then((response2) => response2.json())
       .then((responseJson2) => {
+        console.log("2 fetch: " + nearestStop);
 
         let d = new Date();
         let currentHours = d.getHours();
@@ -98,6 +123,7 @@ export default class textfield extends Component {
                 && el.timeTableRows.find(function (el){
                   return el.stationShortCode === stationShort 
                       && el.type === "DEPARTURE"
+                      && el.trainType !== "T"
                 })
           }).map(function(el) {
             if (el.commuterLineID !== ""){
@@ -110,6 +136,7 @@ export default class textfield extends Component {
           var arrivalsStation = responseJson2[i].timeTableRows.filter(function (el) {
             return el.stationShortCode === responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].stationShortCode
                 && el.type === "ARRIVAL"
+                && el.trainType !== "T"
           }).map(function(el) {
             return el.stationShortCode
           });
@@ -125,6 +152,7 @@ export default class textfield extends Component {
           var departures = responseJson2[i].timeTableRows.filter(function (el) {
             return el.stationShortCode === stationShort
                 && el.type === "DEPARTURE"
+                && el.trainType !== "T"
           }).map(function (el) {
             return el.scheduledTime
           });
