@@ -1,8 +1,8 @@
 import React, { Component } from 'react';
 import { StyleSheet, AppRegistry, Text, TextInput, View, ActivityIndicator, ListView } from 'react-native';
 import moment from 'moment';
-import {geolocated} from 'react-geolocated';
 import geolib from 'geolib';
+import {Location} from 'expo';
 
 export default class textfield extends Component {
   constructor(props) {
@@ -10,7 +10,7 @@ export default class textfield extends Component {
     this.state = {
         isLoading: true,
         text: '',
-        lahtopaikka: 'helsinki',
+        lahtopaikka: '',
         saapumispaikka: '',
         stationShort: 'HKI',
         stationShort2: '',
@@ -18,11 +18,10 @@ export default class textfield extends Component {
         timeUrl: '?departing_trains=8&departed_trains=0&arrived_trains=0&arriving_trains=0',
         kolmas: 'Pääteasema',
         trains:[],
-        test:''
       };
   }
 
-    componentDidMount() { 
+    componentDidMount = async () => { 
       let stationName = '';
       let stationShort = 'HKI';
       let meta = this.state.meta;
@@ -34,8 +33,8 @@ export default class textfield extends Component {
 
       fetch('https://rata.digitraffic.fi/api/v1/metadata/stations')
       .then((response) => response.json())
-      .then((responseJson) => {
-        this.setState({meta: responseJson, test:bar});
+      .then(async (responseJson) => {
+        this.setState({meta: responseJson});
 
         for (let i = 0; i < responseJson.length; i++){
           if (responseJson[i].stationName.split(' asema')[0].toUpperCase() === this.state.lahtopaikka.toUpperCase()){
@@ -67,25 +66,21 @@ export default class textfield extends Component {
             return el.passengerTraffic === true
           });
         }
+
+        let location = await Location.getCurrentPositionAsync({});
         
         var nearestStop = "";
         var distance = "";
-        if (window.navigator && window.navigator.geolocation) {
-          geolocation = window.navigator.geolocation;
-        }
-        if (geolocation) {
-          geolocation.getCurrentPosition(function(position) {
-            distance = geolib.orderByDistance({latitude: position.coords.latitude, longitude: position.coords.longitude},
+
+        if (location && this.state.lahtopaikka === '' || this.state.lahtopaikka === null) {
+            distance = geolib.orderByDistance({latitude: location.coords.latitude, longitude: location.coords.longitude},
               stationLocations
             );
             nearestStop = stationLocations[distance[0].key].stationShortCode;
-            console.log(nearestStop);
-            //alert(nearestStop);
-          });
+            this.setState({stationShort: nearestStop})
         }else {
-          console.log("geolocation not working");
+          console.log("Location not working");
         }
-
         
         if(this.state.stationShort2 !== ''){
             this.setState({timeUrl: '/'+this.state.stationShort2+'?startDate='+ bar +'&limit=8'})
@@ -113,6 +108,7 @@ export default class textfield extends Component {
           
           var visibleTrains = responseJson2.filter(function (el){
             return el.trainNumber
+                && el.trainCategory !== "Shunting"
                 && el.timeTableRows.find(function (el){
                   return el.stationShortCode === stationShort 
                       && el.type === "DEPARTURE"
