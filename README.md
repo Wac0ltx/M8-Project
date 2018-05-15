@@ -1,3 +1,8 @@
 # M8-Project
 
-REEEEEEE
+
+# Asennusohjeet
+ -  Ohje
+ 
+# Lisenssi
+- Sovelluksessa käytetään digitrafficin avointa lähdekoodia, joka on julkaistu Creative Commons 4.0 lisenssillä. 
