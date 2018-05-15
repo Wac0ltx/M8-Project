@@ -1,6 +1,8 @@
 import React, { Component } from 'react';
 import { StyleSheet, AppRegistry, Text, TextInput, View, ActivityIndicator, ListView } from 'react-native';
 import moment from 'moment';
+import {geolocated} from 'react-geolocated';
+import geolib from 'geolib';
 
 export default class textfield extends Component {
   constructor(props) {
@@ -8,100 +10,215 @@ export default class textfield extends Component {
     this.state = {
         isLoading: true,
         text: '',
-        lahtopaikka: 'HKI',
-        saapumispaikka: ''};
+        lahtopaikka: 'helsinki',
+        saapumispaikka: '',
+        stationShort: 'HKI',
+        stationShort2: '',
+        meta: '',
+        timeUrl: '?departing_trains=8&departed_trains=0&arrived_trains=0&arriving_trains=0',
+        kolmas: 'Pääteasema',
+        trains:[],
+        test:''
+      };
   }
 
-    componentDidMount() {
-        let lahto =  this.state.lahtopaikka;
-        let saapumis = "";
-      if (lahto.toUpperCase() == "PASILA"){
-        lahto = "PSL"
-      }else if (lahto.toUpperCase() == "LEPPÄVAARA"){
-        lahto = "LPV"
-      }else if (lahto.toUpperCase() == "TURKU" || lahto.toUpperCase == "TURKU ASEMA"){
-        lahto = "TKU"
-      }else if (lahto.toUpperCase() == "KIRKKONUMMI"){
-        lahto = "KKN"
-      }else if (lahto.toUpperCase() == "HYVINKÄÄ"){
-        lahto = "HY"
-      }else if (lahto.toUpperCase() == "TAMPERE"){
-        lahto = "TPE"
-      }else if (lahto.toUpperCase() == "TURKU SATAMA"){
-        lahto = "TUS"
-      }else if (lahto.toUpperCase() == "ESPOO"){
-         lahto = "EPO"
-      }else {
-        lahto = "HKI"
-      };
-    return fetch('https://rata.digitraffic.fi/api/v1/live-trains/station/' + lahto + saapumis)
+    componentDidMount() { 
+      let stationName = '';
+      let stationShort = 'HKI';
+      let meta = this.state.meta;
+      let timeUrl = this.state.timeUrl;
+      let foo = new Date();
+      let stationShort2 = '';
+      var bar = foo.toISOString();
+      var geolocation = null;
+
+      fetch('https://rata.digitraffic.fi/api/v1/metadata/stations')
       .then((response) => response.json())
       .then((responseJson) => {
-        
-        console.log(responseJson.length)
-        
-        var trainNo = "";
-        var arrivalStation = "";
-        var arrivalTime = "";
-        for (var i = 0; i < responseJson.length; i++){
-            
-            if (responseJson[i].commuterLineID !== ""){
-                trainNo = responseJson[i].commuterLineID
-            }else {
-                trainNo = responseJson[i].trainNumber
+        this.setState({meta: responseJson, test:bar});
+
+        for (let i = 0; i < responseJson.length; i++){
+          if (responseJson[i].stationName.split(' asema')[0].toUpperCase() === this.state.lahtopaikka.toUpperCase()){
+            this.setState({stationShort: responseJson[i].stationShortCode});
+            stationShort = this.state.stationShort;
+          }else if (responseJson[i].stationName.toUpperCase() === this.state.lahtopaikka.toUpperCase()){
+            this.setState({stationShort: responseJson[i].stationShortCode});
+          }else {
+            stationShort = "HKI";
+          }
+
+          if (responseJson[i].stationName.split(' asema')[0].toUpperCase() === this.state.saapumispaikka.toUpperCase()
+              && responseJson[i].passengerTraffic == true){
+            this.setState({stationShort2: responseJson[i].stationShortCode});
+          }else if (responseJson[i].stationName.toUpperCase() === this.state.saapumispaikka.toUpperCase()){
+            this.setState({stationShort2: responseJson[i].stationShortCode});
+                stationShort2 = this.state.stationShort2;
+          }else {
+            stationShort2 = "";
+          }
+
+          if (responseJson[i].stationShortCode === this.state.stationShort){
+            if (responseJson[i].passengerTraffic !== false){
+	             stationName = responseJson[i].stationName.split(' asema')[0];
             }
-            responseJson[i].trainID = trainNo
-            
-                for (i2 = 0; i2 < responseJson[i].timeTableRows.length; i2++){
-                    if (responseJson[i].timeTableRows[i2].stationShortCode === lahto
-                       && responseJson[i].timeTableRows[i2].type === "DEPARTURE") {
-                    var departureTime = responseJson[i].timeTableRows[i2].scheduledTime
-                    responseJson[i].departureTime = departureTime
-                   }
-/*                 if (responseJson[i].commuterLineID === "P" ||   responseJson[i].commuterLineID === "I"){
-                        if (responseJson[i].timeTableRows[i2].stationShortCode === "LEN"){
-*/
-                            arrivalStation = responseJson[i].timeTableRows[i2].stationShortCode
-                            responseJson[i].arrivalStation = arrivalStation
-/*                            if (responseJson[i].timeTableRows[i2].type === "ARRIVAL"){
-*/
-                                arrivalTime = responseJson[i].timeTableRows[i2].scheduledTime
-                                responseJson[i].arrivalTime = arrivalTime
-/*                            }
-                        }
-                    }else { 
-*/
-                        arrivalStation = responseJson[i].timeTableRows[responseJson[i].timeTableRows.length-1].stationShortCode
-                        responseJson[i].arrivalStation = arrivalStation
-                        arrivalTime = responseJson[i].timeTableRows[responseJson[i].timeTableRows.length-1].scheduledTime
-                        responseJson[i].arrivalTime = arrivalTime
-//                    }
-                }
-            console.log("Length: " + responseJson[i].commuterLineID.length + " LahtoAika: " + this.formatDate(departureTime) + " PaateAsema: " + arrivalStation + " PaateAika: " + this.formatDate(arrivalTime))
+          }
+          
+          var stationLocations = responseJson.filter(function (el) {
+            return el.passengerTraffic === true
+          });
         }
+        
+        var nearestStop = "";
+        var distance = "";
+        if (window.navigator && window.navigator.geolocation) {
+          geolocation = window.navigator.geolocation;
+        }
+        if (geolocation) {
+          geolocation.getCurrentPosition(function(position) {
+            distance = geolib.orderByDistance({latitude: position.coords.latitude, longitude: position.coords.longitude},
+              stationLocations
+            );
+            nearestStop = stationLocations[distance[0].key].stationShortCode;
+            console.log(nearestStop);
+            //alert(nearestStop);
+          });
+        }else {
+          console.log("geolocation not working");
+        }
+
+        
+        if(this.state.stationShort2 !== ''){
+            this.setState({timeUrl: '/'+this.state.stationShort2+'?startDate='+ bar +'&limit=8'})
+          }else{
+            this.setState({timeUrl:'?departing_trains=8&departed_trains=0&arrived_trains=0&arriving_trains=0', kolmas:'Pääteasema'});
+
+          }
+        stationShort2 = this.state.stationShort2;
+        stationShort = this.state.stationShort;
+    fetch('https://rata.digitraffic.fi/api/v1/live-trains/station/' + this.state.stationShort + this.state.timeUrl)
+      .then((response2) => response2.json())
+      .then((responseJson2) => {
+
+        let d = new Date();
+        let currentHours = d.getHours();
+        let currentMins = d.getMinutes();
+        let trainNo = "";
+        let arrivalStation = "";
+        let arrivalTime = "";
+        let departureTime = "";
+        let trainNum = "";
+
+        for (var i = 0; i < responseJson2.length; i++){
+
+          
+          var visibleTrains = responseJson2.filter(function (el){
+            return el.trainNumber
+                && el.timeTableRows.find(function (el){
+                  return el.stationShortCode === stationShort 
+                      && el.type === "DEPARTURE"
+                })
+          }).map(function(el) {
+            if (el.commuterLineID !== ""){
+              return el.commuterLineID
+            }else {
+              return el.trainNumber
+            }
+          });
+          
+          
+      
+          var arrivalsStation = responseJson2[i].timeTableRows.filter(function (el) {
+            return el.stationShortCode === responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].stationShortCode
+                && el.type === "ARRIVAL"
+          }).map(function(el) {
+            return el.stationShortCode
+          });
+        
+          var arrivalsTime = responseJson2[i].timeTableRows.filter(function (el) {
+            return el.stationShortCode === responseJson2[i].timeTableRows[responseJson2[i].timeTableRows.length-1].stationShortCode
+                && el.type === "ARRIVAL"
+                && el.scheduledTime.length > 0;
+          }).map(function(el) {
+            return el.scheduledTime
+          });
+                      
+            var departures = responseJson2[i].timeTableRows.filter(function (el) {
+            return el.stationShortCode === stationShort
+                && el.type === "DEPARTURE"
+          }).map(function (el) {
+            return el.scheduledTime
+          });
+          if(stationShort2 !== ''){
+          console.log(stationShort2);
+          var arrivals = responseJson2[i].timeTableRows.filter(function (el) {
+            return el.stationShortCode === stationShort2
+                && el.type === "ARRIVAL"
+               
+          }).map(function (el) {
+            return el.scheduledTime
+            
+          });
+          var raide = responseJson2[i].timeTableRows.filter(function (el) {
+            return el.stationShortCode === stationShort
+                && el.type === "DEPARTURE"
+          }).map(function(el) {
+            return el.commercialTrack
+          });
+
+          }
+          
+         // responseJson2[i].lastStop = arrivalsStation;
+          responseJson2[i].departingTime = departures[0];
+          responseJson2[i].visibleTrains = visibleTrains[i];
+          
+          if(stationShort2 === ''){
+          responseJson2[i].saapumisTime = this.formatDate(arrivalsTime[0]);
+
+          var statLongName = [];
+
+          for (let i2 = 0; i2 < responseJson.length; i2++){
+            if (arrivalsStation[0] === responseJson[i2].stationShortCode){
+              statLongName = responseJson[i2].stationName.split(' asema')[0];
+            }
+          }
+          responseJson2[i].lastStop = statLongName;
+          }else{
+          responseJson2[i].saapumisTime = this.formatDate(arrivals[0]);
+          responseJson2[i].lastStop = raide;
+          this.setState({stationShort2:''});
+          }
+
+
+        }
+
         let ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
         this.setState({
           isLoading: false,
-          dataSource: ds.cloneWithRows(responseJson),
-          json: responseJson
+          dataSource: ds.cloneWithRows(responseJson2),
+          json: responseJson2,
+          trains: responseJson2
         }, function() {
-          
         });
       })
+      })
+      
       .catch((error) => {
         console.error(error);
       });
   }
-
   formatDate(date){
-    return moment.utc(date).add(2, "hours").format("HH:mm")
+    let str = moment.utc(date).add(3, "hours").format("HH:mm");
+    return str;
   }
 
 lahtoChanged = (lahto) => {
-  console.log(lahto)
   this.setState({lahtopaikka: lahto}, () => this.componentDidMount() );
 }
 
+saapumisChanged = (saapumis) => {
+  this.setState({saapumispaikka: saapumis, kolmas: 'Lähtöraide'}, () => this.componentDidMount() );
+  
+}
 
   render() {
           if (this.state.isLoading) {
@@ -111,112 +228,147 @@ lahtoChanged = (lahto) => {
         </View>
       );
     }  
+    function sortF(a,b){
+      var dateA = new Date(a.departingTime).getTime();
+      var dateB = new Date(b.departingTime).getTime();
+      return dateA > dateB ? 1 : -1;
+    }
+    
+    const itemRows = this.state.trains.sort(sortF).map(train => (
+      <View key={train.trainNumber} style={styles.row1}>
+        <Text style={styles.junatext2}>{train.visibleTrains}&emsp;</Text>
+        <Text style={styles.junatext3}>{this.formatDate(train.departingTime)}</Text>
+        <Text style={styles.junatext4}>{train.lastStop}</Text>
+        <Text style={styles.junatext5}>{train.saapumisTime}</Text>
+      </View>
+));
+
 
     return (
-          <View style={{flex: 1, paddingTop: 20}}>
+         <View style={{flex: 1, paddingTop: 20}}>
             <View style={styles.container}>
             <View>
               <TextInput
-                style={styles.textinput}
-                placeholder="Lähtöpaikka"
+                style={styles.textinput1}
+                underlineColorAndroid='transparent'
+                placeholder="lähtöpaikka"
                 onChangeText={this.lahtoChanged}
               />
               <TextInput
-                style={styles.textinput}
-                placeholder="Pääteasema"
-                onChangeText={(text) => this.setState({paateasema: text})}
+                style={styles.textinput2}
+                underlineColorAndroid='transparent'
+                placeholder="pääteasema"
+                onChangeText={this.saapumisChanged}
               />
             </View>
-              
-            <View style={{flexDirection: 'row'}}>
-                <Text style={styles.junatext}>Juna</Text>
-                <Text style={styles.junatext1}>Lähtee</Text>
-                <Text style={styles.junatext1}>Pääteasema</Text>
-                <Text style={styles.junatext1}>Saapuu</Text>
-            </View>
-            <ListView
-            dataSource={this.state.dataSource}
-            renderRow={(rowData) =>
-                <View numberOfLines={1} style={{
-                    flex: 1,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                }}>
-                    <Text style={styles.junatext2}>{rowData.trainID}&emsp;</Text>
-                    <Text style={styles.junatext3}>{this.formatDate(rowData.departureTime)}</Text>
-                    <Text style={styles.junatext4}>{rowData.arrivalStation}</Text>
-                    <Text style={styles.junatext5}>{this.formatDate(rowData.arrivalTime)}</Text>
-                
-                        {console.log("PuhNumero: " + rowData.trainID + " PuhLahto: " + this.formatDate(rowData.departureTime) + " PuhSPaikka: " + rowData.arrivalStation + " PuhSAika: " + this.formatDate(rowData.arrivalTime))}
-            </View>
-            }
-            renderSeparator={(sectionId, rowId) => <View key={rowId} style={styles.separator}/>}
-            />
+          <View style={styles.container1}>
+           <View style={{ flexDirection: 'row' }}>
+            <Text style={styles.junatext6}>Juna</Text>
+            <Text style={styles.junatext6}>Lähtee</Text>
+            <Text style={styles.junatext6}>{this.state.kolmas}</Text>
+            <Text style={styles.junatext6}>Saapuu</Text>
           </View>
+        {itemRows}
         </View>
+      </View>
+     </View>
+     
     );
   }
 }
 
+
 const styles = StyleSheet.create({
-    container: {
-        paddingTop: 40,
-    },
-    container1: {
-        borderWidth: 1,
-        padding: 10,
-    },
-    container2: {
-        borderWidth: 1,
-        padding: 20,
-    },
-    textinput: {
-        height: 40,
-        borderWidth: 1,
-        borderRadius: 15,
-        padding: 5,
-        fontSize: 25,
-    },
-    text: {
-        padding: 10,
-    },
-      head: { height: 40, backgroundColor: '#f1f8ff' },
-      text2: { marginLeft: 5 },
-      row: { height: 30 },
-    junatext:{
-      marginLeft:15,
-      marginBottom:10,
-      marginTop:10,
-      fontSize:18
-    },
-    junatext1:{
-      marginLeft:20,
-      marginTop:10,
-      fontSize:18
-    },
-    junatext2:{
-        marginLeft:25,
-        fontSize:16,
-    },
-    junatext3:{
-      position: 'absolute',
-      left:80,
-      fontSize:16
-    },
-     junatext4:{
-        marginLeft:185,
-        position: 'absolute',
-        fontSize:16
-    },
-    junatext5:{
-        marginLeft:15,
-        position:'absolute',
-        fontSize:16,
-        right:44
-    },
-    separator: {
-        flex: 1,
-        height: StyleSheet.hairlineWidth,
-        backgroundColor: '#8E8E8E',
-    },
+  container: {
+    backgroundColor: '#89CFF0',
+    flex: 1,
+    borderWidth: 5,
+    borderColor: '#4C516D',
+  },
+  container1: {
+    flex: 1,
+    marginTop: 5,
+    backgroundColor: 'white',
+    borderWidth: 6,
+    borderColor: '#73C2FB',
+    borderRadius: 6,
+    marginHorizontal: 2,
+    marginBottom: 2,
+    paddingHorizontal: 4,
+  },
+  row1: {
+    marginTop:30,
+    borderBottomWidth: 0.5,
+    borderColor: '#4C516D'
+  },
+  textinput1: {
+    height: 45,
+    borderWidth: 6,
+    backgroundColor: 'white',
+    borderColor: '#73C2FB',
+    textAlign: 'center',
+    fontSize: 25,
+    textDecorationLine: 'none',
+    borderBottomWidth: 2,
+  },
+  textinput2: {
+    height: 48,
+    borderWidth: 6,
+    backgroundColor: 'white',
+    borderColor: '#73C2FB',
+    textAlign: 'center',
+    fontSize: 25,
+    textDecorationLine: 'none',
+  },
+  head: {
+    height: 40, backgroundColor: '#f1f8ff'
+  },
+  text2: {
+    marginLeft: 5
+  },
+  row: {
+    height: 30
+  },
+  junatext: {
+    marginLeft: 15,
+    marginBottom: 10,
+    marginTop: 10,
+    fontSize: 15,
+  },
+  junatext1: {
+    marginLeft: 20,
+    marginTop: 10,
+    fontSize: 14,
+  },
+  junatext2: {
+    marginLeft: 20,
+     fontSize: 14,
+  },
+  junatext3: {
+    position: 'absolute',
+    left: 80,
+    fontSize: 14,
+  },
+  junatext4: {
+    marginLeft: 164,
+    position: 'absolute',
+   fontSize: 14,
+  },
+  junatext5: {
+    marginLeft: 15,
+    position: 'absolute',
+    fontSize: 14,
+    right:20 ,
+  },
+  
+  junatext6: {
+    marginLeft: 14,
+    marginTop: 10,
+    fontSize: 18,
+  },
+  separator: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#8E8E8E',
+  },
 });
