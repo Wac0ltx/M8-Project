@@ -1,5 +1,6 @@
 # M8-Project
 
+ Junaten
 
 # Asennusohjeet
  - Lataa expo app puhelimeen
