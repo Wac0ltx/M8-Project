@@ -67,7 +67,15 @@ export default class textfield extends Component {
           });
         }
 
-        let location = await Location.getCurrentPositionAsync({});
+        let location = null;
+        const { Location, Permissions } = Expo;
+        let status = await Permissions.askAsync(Permissions.LOCATION);
+        console.log(status.status);
+        if (status.status === "granted"){
+        location = await Location.getCurrentPositionAsync({});
+        }else {
+          alert("Location disabled");
+        }
         
         var nearestStop = "";
         var distance = "";
@@ -81,6 +89,7 @@ export default class textfield extends Component {
         }else {
           console.log("Location not working");
         }
+        console.log("nearest: " + nearestStop);
         
         if(this.state.stationShort2 !== ''){
             this.setState({timeUrl: '/'+this.state.stationShort2+'?startDate='+ bar +'&limit=8'})
